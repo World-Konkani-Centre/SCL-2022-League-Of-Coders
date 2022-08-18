@@ -182,38 +182,7 @@ def predict():
         
         #Recommendation
 
-        temp = stock.history(period="2y",interval="1d")
-        temp.drop(['Dividends','Stock Splits'], axis=1, inplace=True)
-        temp['Returns']=((temp['Close']-temp['Open'])/temp['Open'])*100
-        temp.to_csv('Recommendation.csv')
-        stock_data = pd.read_csv('Recommendation.csv')
-        stock_data.sort_values('Date')
 
-        #SMA
-        stock_data['SMA_25'] = stock_data['Close'].rolling(25).mean()
-        stock_data['SMA_50'] = stock_data['Close'].rolling(50).mean()
-        stock_data['Signal_SMA'] = np.where(stock_data['SMA_25'] > stock_data['SMA_50'], 1.0, 0.0)
-        stock_data['Position_SMA'] = stock_data['Signal_SMA'].diff()
-        stock_data = stock_data.dropna()
-        #SMA-backtest
-        buyAmt = 0
-        sellAmt = 0
-        return_perSMA = 0
-        buyDates = np.array([])
-        for i in range(stock_data.shape[0]):
-            if stock_data.iloc[i, 10]==1:
-                buyAmt = buyAmt + stock_data.iloc[i, 4]*100
-                buyDates = np.append(buyDates, i)
-        for i in range(stock_data.shape[0]):
-            for j in buyDates:
-                if i == j:
-                    if (int(j)+60 < stock_data.shape[0]):
-                        sellAmt = sellAmt + stock_data.iloc[int(j+60), 4]*100
-                    else:
-                        sellAmt = sellAmt + stock_data.iloc[int(j+10), 4]*100
-        buyAmt=round(buyAmt,3)
-        total_SMA = round(sellAmt - buyAmt,3)
-        return_perSMA = round((sellAmt/buyAmt)*100,3)
 
         #EMA
         stock_data['EMA_25'] = stock_data['Close'].ewm(span= 25, adjust=False).mean()
