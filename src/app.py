@@ -44,7 +44,41 @@ def predict():
     if request.method == "POST":
         ticker = request.form.get("ticker")
         stock = yf.Ticker(ticker+".NS")
-
+        try:
+            stock = yf.Ticker(ticker+".NS")
+            try:
+                value=stock.info['longBusinessSummary']
+            except KeyError:
+                value="-"
+            fullname=stock.info['longName']
+            website=stock.info['website']
+            bookvalue=stock.info['bookValue']
+            fiftytwochange=stock.info['52WeekChange']
+            beta=stock.info['beta']
+            currentPrice=stock.info['currentPrice']
+            dayHigh=stock.info['dayHigh']
+            dayLow=stock.info['dayLow']
+            dividendRate=stock.info['dividendRate']
+            fiftyTwoWeekHigh=stock.info['fiftyTwoWeekHigh']
+            fiftyTwoWeekLow=stock.info['fiftyTwoWeekLow']
+            forwardEps=stock.info['forwardEps']
+            forwardPE=stock.info['forwardPE']
+            marketCap=stock.info['marketCap']
+            priceToBook=stock.info['priceToBook']
+            returnOnAssets=stock.info['returnOnAssets']
+            revenueGrowth=stock.info['revenueGrowth']
+            targetHighPrice=stock.info['targetHighPrice']
+            targetLowPrice=stock.info['targetLowPrice']
+            trailingEps=stock.info['trailingEps']
+            try:
+                trailingPE=stock.info['trailingPE']
+            except KeyError:
+                trailingPE="-"
+            returnOnEquity=stock.info['returnOnEquity']
+            twoHundredDayAverage=stock.info['twoHundredDayAverage']
+            previousclose=stock.info['previousClose']
+        except KeyError:
+            return render_template('ErrorPage.html')
         
         ###Prediction Start
         regressor = load_model(ticker+".h5")
