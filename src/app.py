@@ -182,7 +182,38 @@ def predict():
         
         #Recommendation
 
+        temp = stock.history(period="2y",interval="1d")
+        temp.drop(['Dividends','Stock Splits'], axis=1, inplace=True)
+        temp['Returns']=((temp['Close']-temp['Open'])/temp['Open'])*100
+        temp.to_csv('Recommendation.csv')
+        stock_data = pd.read_csv('Recommendation.csv')
+        stock_data.sort_values('Date')
 
+        #SMA
+        stock_data['SMA_25'] = stock_data['Close'].rolling(25).mean()
+        stock_data['SMA_50'] = stock_data['Close'].rolling(50).mean()
+        stock_data['Signal_SMA'] = np.where(stock_data['SMA_25'] > stock_data['SMA_50'], 1.0, 0.0)
+        stock_data['Position_SMA'] = stock_data['Signal_SMA'].diff()
+        stock_data = stock_data.dropna()
+        #SMA-backtest
+        buyAmt = 0
+        sellAmt = 0
+        return_perSMA = 0
+        buyDates = np.array([])
+        for i in range(stock_data.shape[0]):
+            if stock_data.iloc[i, 10]==1:
+                buyAmt = buyAmt + stock_data.iloc[i, 4]*100
+                buyDates = np.append(buyDates, i)
+        for i in range(stock_data.shape[0]):
+            for j in buyDates:
+                if i == j:
+                    if (int(j)+60 < stock_data.shape[0]):
+                        sellAmt = sellAmt + stock_data.iloc[int(j+60), 4]*100
+                    else:
+                        sellAmt = sellAmt + stock_data.iloc[int(j+10), 4]*100
+        buyAmt=round(buyAmt,3)
+        total_SMA = round(sellAmt - buyAmt,3)
+        return_perSMA = round((sellAmt/buyAmt)*100,3)
 
         #EMA
         stock_data['EMA_25'] = stock_data['Close'].ewm(span= 25, adjust=False).mean()
@@ -248,7 +279,154 @@ def predict():
         return_perBB = round(((bbsellAmt/bbbuyAmt)*100),3)
 
         #MACD
- 
+        stock_data['MACD'] = stock_data['Close'].ewm(span=12, adjust= False).mean() - stock_data['Close'].ewm(span=26, adjust= False).mean()
+        stock_data['Signal_9'] = stock_data['MACD'].ewm(span=9, adjust= False).mean()
+        stock_data['Signal_MACD'] = np.where(stock_data.loc[:, 'MACD'] > stock_data.loc[:, 'Signal_9'], 1.0, 0.0)
+        stock_data['Position_MACD'] = stock_data['Signal_MACD'].diff()
+        #MACD-backtest
+        cdbuyAmt = 0
+        cdsellAmt = 0
+        cdbuyDates = np.array([])
+        for i in range(stock_data.shape[0]):
+            if stock_data.iloc[i, 24]==1:
+                cdbuyAmt = buyAmt + stock_data.iloc[i, 4]*100
+                cdbuyDates = np.append(buyDates, i)
+                
+        cdbuyAmt=round(cdbuyAmt,3)
+        for i in range(stock_data.shape[0]):
+            for j in cdbuyDates:
+                if i == j:
+                    if (int(j)+60 < stock_data.shape[0]):
+                        cdsellAmt = cdsellAmt + stock_data.iloc[int(j+60), 4]*100
+                    else:
+                        cdsellAmt = cdsellAmt + stock_data.iloc[int(j+8), 4]*100
+
+        total_MACD = round((cdsellAmt - cdbuyAmt),3)
+        return_perCD=round(((cdsellAmt/cdbuyAmt)*100),3)
+        
+        #RSI
+        stock_data['Diff'] = stock_data['Close'].diff()
+        stock_data['Gain'] = stock_data['Diff'][stock_data['Diff']>0]
+        stock_data['Loss'] = (-1)*stock_data["Diff"][stock_data["Diff"]<0]
+        stock_data = stock_data.fillna(0)
+        stock_data['AvgGain'] = stock_data['Gain'].rolling(window=14).mean()
+        stock_data['AvgLoss'] = stock_data['Loss'].rolling(window=14).mean()
+        stock_data['RSI'] = 100 - (100/(1+ stock_data['AvgGain']/stock_data['AvgLoss']))
+        stock_data['RSI70'] = np.where(stock_data['RSI'] > 70, 1, 0)
+        stock_data['RSI30'] = np.where(stock_data['RSI'] < 30, -1, 0)
+        stock_data['Position_R70'] = stock_data['RSI70'].diff()
+        stock_data['Position_R30'] = stock_data['RSI30'].diff()
+
+        stock_data = stock_data.dropna()
+        #stock_data.to_csv('smacheck.csv')
+        arr3=stock_data.to_numpy()
+        
+        buyx=[]
+        buyy=[]
+        sellx=[]
+        selly=[]
+        emabuyx=[]
+        emabuyy=[]
+        emasellx=[]
+        emaselly=[]
+        bbhigh=[]
+        bblow=[]
+        bbmean=[]
+        bbbuyx=[]
+        bbbuyy=[]
+        bbsellx=[]
+        bbselly=[]
+        sig9=[]
+        macd=[]
+        cdbuyx=[]
+        cdbuyy=[]
+        cdsellx=[]
+        cdselly=[]
+        rsi=[]
+        r70=[]
+        r30=[]
+        rsbuyx=[]
+        rsbuyy=[]
+        rssellx=[]
+        rsselly=[]
+
+        s=0
+        for row in arr3:
+            if arr3[s][10]==1:
+               buyx.append(arr3[s][0])
+               buyy.append(arr3[s][8])
+            elif arr3[s][10]==-1:
+               sellx.append(arr3[s][0])
+               selly.append(arr3[s][8])
+            s=s+1
+        showsmabuydate=buyx[-1]
+        showsmabuyprice=round(buyy[-1],3)
+        showsmaselldate=sellx[-1]
+        showsmasellprice=round(selly[-1],3)
+
+        t=0
+        for row in arr3:
+            if arr3[t][14]==1:
+                emabuyx.append(arr3[t][0])
+                emabuyy.append(arr3[t][12])
+            elif arr3[t][14]==-1:
+               emasellx.append(arr3[t][0])
+               emaselly.append(arr3[t][12])
+            t=t+1
+        showemabuydate=emabuyx[-1]
+        showemabuyprice=round(emabuyy[-1],3)
+        showemaselldate=emasellx[-1]
+        showemasellprice=round(emaselly[-1],3)
+
+        x=0
+        for row in arr3:
+            if arr3[x][20]==1:
+                bbbuyx.append(arr3[x][0])
+                bbbuyy.append(arr3[x][18])
+            elif arr3[x][20]==-1:
+                bbsellx.append(arr3[x][0])
+                bbselly.append(arr3[x][17])
+            x=x+1
+        showbbbuydate=bbbuyx[-1]
+        showbbbuyprice=round(bbbuyy[-1],3)
+        showbbselldate=bbsellx[-1]
+        showbbsellprice=round(bbselly[-1],3)
+        
+        y=0
+        for row in arr3:
+            if arr3[y][24]==1:
+                cdbuyx.append(arr3[y][0])
+                cdbuyy.append(arr3[y][4])
+            elif arr3[y][24]==-1:
+                cdsellx.append(arr3[y][0])
+                cdselly.append(arr3[y][4])
+            y=y+1
+        showcdbuydate=cdbuyx[-1]
+        showcdbuyprice=round(cdbuyy[-1],3)
+        showcdselldate=cdsellx[-1]
+        showcdsellprice=round(cdselly[-1],3)
+        z=0
+        for row in arr3:
+            if arr3[z][33]==1:
+                rsbuyx.append(arr3[z][0])
+                rsbuyy.append(arr3[z][30])
+            elif arr3[z][34]==-1:
+                rssellx.append(arr3[z][0])
+                rsselly.append(arr3[z][30])
+            z=z+1
+        showrsibuydate=rsbuyx[-1]
+        showrsibuyprice=round(rsbuyy[-1],3)
+        showrsiselldate=rssellx[-1]
+        showrsisellprice=round(rsselly[-1],3)
+
+        sma25=[]
+        sma50=[]
+        possma=[]
+        sigsma=[]
+        madate=[]
+        maclose=[]
+        ema25=[]
+        ema50=[]
 
         k=0
         for row in arr3:
